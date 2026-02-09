@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 
@@ -40,7 +40,7 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
     return urlData.publicUrl;
   };
 
-  const handleFiles = async (files: FileList | File[]) => {
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
     const validFiles = Array.from(files).filter((f) =>
       f.type.startsWith("image/")
     );
@@ -66,7 +66,7 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
 
       if (validUrls.length > 0) {
         onChange([...images, ...validUrls]);
-      } else if (!error) {
+      } else {
         setError("Upload failed. Check console for details.");
       }
     } catch (err) {
@@ -75,44 +75,40 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
     }
 
     setUploading(false);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images, onChange]);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const openFilePicker = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setDragOver(false);
     handleFiles(e.dataTransfer.files);
-  };
+  }, [handleFiles]);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(true);
-  };
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  }, []);
 
   const removeImage = (index: number) => {
     onChange(images.filter((_, i) => i !== index));
   };
 
   return (
-    <div className="space-y-3">
-      {/* Hidden file input — outside of any interactive containers */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        multiple
-        className="sr-only"
-        tabIndex={-1}
-        onChange={(e) => {
-          const files = e.target.files;
-          if (files && files.length > 0) {
-            handleFiles(files);
-          }
-          setTimeout(() => {
-            if (fileInputRef.current) fileInputRef.current.value = "";
-          }, 100);
-        }}
-      />
-
+    <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
       {/* Error message */}
       {error && (
         <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -120,15 +116,33 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
         </div>
       )}
 
-      {/* Drop zone */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => fileInputRef.current?.click()}
+      {/* Separate hidden file input - completely outside drop zone */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        multiple
+        style={{ position: "fixed", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none" }}
+        tabIndex={-1}
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            handleFiles(files);
+          }
+          // Reset input so the same file can be selected again
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }}
+      />
+
+      {/* Drop zone - uses a button element for reliable click handling */}
+      <button
+        type="button"
+        onClick={openFilePicker}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        onDragLeave={() => setDragOver(false)}
-        className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300
+        onDragLeave={handleDragLeave}
+        disabled={uploading}
+        className={`relative w-full border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300
           ${
             dragOver
               ? "border-accent-blue bg-accent-blue/5"
@@ -137,7 +151,6 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
           ${uploading ? "pointer-events-none opacity-60" : ""}
         `}
       >
-
         {uploading ? (
           <div className="flex flex-col items-center gap-2">
             <svg
@@ -184,7 +197,7 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
             </span>
           </div>
         )}
-      </div>
+      </button>
 
       {/* Image preview grid */}
       {images.length > 0 && (
@@ -212,8 +225,10 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
                 )}
                 {/* Remove button */}
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     removeImage(index);
                   }}
                   className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white
