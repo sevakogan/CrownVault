@@ -12,6 +12,7 @@ interface ImageUploadProps {
 export default function ImageUpload({ images, onChange }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadFile = async (file: File) => {
@@ -19,15 +20,16 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const filePath = `watches/${fileName}`;
 
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("watch-images")
       .upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
       });
 
-    if (error) {
-      console.error("Upload error:", error);
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      setError(`Upload failed: ${uploadError.message}`);
       return null;
     }
 
@@ -42,16 +44,34 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
     const validFiles = Array.from(files).filter((f) =>
       f.type.startsWith("image/")
     );
-    if (validFiles.length === 0) return;
+    if (validFiles.length === 0) {
+      setError("No valid image files selected.");
+      return;
+    }
+
+    // Check file sizes (max 10MB each)
+    const oversized = validFiles.filter((f) => f.size > 10 * 1024 * 1024);
+    if (oversized.length > 0) {
+      setError("Some files are over 10MB. Please use smaller images.");
+      return;
+    }
 
     setUploading(true);
+    setError("");
 
-    const uploadPromises = validFiles.map((file) => uploadFile(file));
-    const urls = await Promise.all(uploadPromises);
-    const validUrls = urls.filter(Boolean) as string[];
+    try {
+      const uploadPromises = validFiles.map((file) => uploadFile(file));
+      const urls = await Promise.all(uploadPromises);
+      const validUrls = urls.filter(Boolean) as string[];
 
-    if (validUrls.length > 0) {
-      onChange([...images, ...validUrls]);
+      if (validUrls.length > 0) {
+        onChange([...images, ...validUrls]);
+      } else if (!error) {
+        setError("Upload failed. Check console for details.");
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      setError("Upload failed. Please try again.");
     }
 
     setUploading(false);
@@ -74,6 +94,13 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
 
   return (
     <div className="space-y-3">
+      {/* Error message */}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Drop zone */}
       <div
         onClick={() => fileInputRef.current?.click()}
@@ -92,10 +119,16 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/gif"
           multiple
           className="hidden"
-          onChange={(e) => e.target.files && handleFiles(e.target.files)}
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              handleFiles(e.target.files);
+            }
+            // Reset so same file can be selected again
+            e.target.value = "";
+          }}
         />
 
         {uploading ? (
@@ -140,7 +173,7 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
               Drop images here or <span className="text-accent-blue">browse</span>
             </span>
             <span className="text-vault-muted/40 text-xs">
-              JPG, PNG, WebP — multiple files supported
+              JPG, PNG, WebP — max 10MB each
             </span>
           </div>
         )}
