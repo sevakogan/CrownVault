@@ -94,6 +94,25 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
 
   return (
     <div className="space-y-3">
+      {/* Hidden file input — outside of any interactive containers */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        multiple
+        className="sr-only"
+        tabIndex={-1}
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            handleFiles(files);
+          }
+          setTimeout(() => {
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }, 100);
+        }}
+      />
+
       {/* Error message */}
       {error && (
         <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -103,11 +122,9 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
 
       {/* Drop zone */}
       <div
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          fileInputRef.current?.click();
-        }}
+        role="button"
+        tabIndex={0}
+        onClick={() => fileInputRef.current?.click()}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={() => setDragOver(false)}
@@ -120,23 +137,6 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
           ${uploading ? "pointer-events-none opacity-60" : ""}
         `}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = e.target.files;
-            if (files && files.length > 0) {
-              handleFiles(files);
-            }
-            // Reset after a short delay so the files are captured first
-            setTimeout(() => {
-              if (fileInputRef.current) fileInputRef.current.value = "";
-            }, 100);
-          }}
-        />
 
         {uploading ? (
           <div className="flex flex-col items-center gap-2">
