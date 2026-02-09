@@ -2,19 +2,35 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 export default function AccessForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setStatus("loading");
+    setErrorMsg("");
 
-    // TODO: Connect to Supabase — for now, simulate
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const { error } = await supabase
+      .from("access_requests")
+      .insert({ email: email.toLowerCase().trim() });
+
+    if (error) {
+      if (error.code === "23505") {
+        // Unique constraint — email already submitted
+        setStatus("success");
+      } else {
+        setErrorMsg("Something went wrong. Please try again.");
+        setStatus("error");
+      }
+      return;
+    }
+
     setStatus("success");
   };
 
@@ -113,6 +129,10 @@ export default function AccessForm() {
                 "Request Access"
               )}
             </motion.button>
+
+            {status === "error" && (
+              <p className="text-center text-red-400 text-sm">{errorMsg}</p>
+            )}
 
             <p className="text-center text-vault-muted/60 text-xs">
               By invitation only. Your request will be reviewed by our team.
