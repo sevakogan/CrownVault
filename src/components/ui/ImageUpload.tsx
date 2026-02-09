@@ -103,7 +103,11 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
 
       {/* Drop zone */}
       <div
-        onClick={() => fileInputRef.current?.click()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          fileInputRef.current?.click();
+        }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={() => setDragOver(false)}
@@ -123,11 +127,14 @@ export default function ImageUpload({ images, onChange }: ImageUploadProps) {
           multiple
           className="hidden"
           onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) {
-              handleFiles(e.target.files);
+            const files = e.target.files;
+            if (files && files.length > 0) {
+              handleFiles(files);
             }
-            // Reset so same file can be selected again
-            e.target.value = "";
+            // Reset after a short delay so the files are captured first
+            setTimeout(() => {
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }, 100);
           }}
         />
 
