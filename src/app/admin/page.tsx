@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase, type AccessRequest, type Watch } from "@/lib/supabase";
 import Logo from "@/components/ui/Logo";
+import ImageUpload from "@/components/ui/ImageUpload";
 
 const ADMIN_PASSWORD = "crownvault2025";
 
@@ -465,17 +466,13 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* Image URL */}
+            {/* Images */}
             <div>
-              <label className={labelClass}>Image URL</label>
-              <input
-                type="url"
-                value={form.images[0] || ""}
-                onChange={(e) => setForm({ ...form, images: e.target.value ? [e.target.value] : [] })}
-                placeholder="https://example.com/watch-photo.jpg"
-                className={inputClass}
+              <label className={labelClass}>Images</label>
+              <ImageUpload
+                images={form.images}
+                onChange={(images) => setForm({ ...form, images })}
               />
-              <p className="text-vault-muted/40 text-xs mt-1">Paste a direct image URL. Image upload coming soon.</p>
             </div>
 
             {/* Submit */}
