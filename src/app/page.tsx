@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import Logo from "@/components/ui/Logo";
 import AccessForm from "@/components/ui/AccessForm";
@@ -47,9 +48,20 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-vault-muted text-xs tracking-wider uppercase"
+            className="flex items-center gap-4"
           >
-            Invite Only
+            <span className="text-vault-muted text-xs tracking-wider uppercase hidden sm:block">
+              Invite Only
+            </span>
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-lg text-sm font-medium
+                         text-vault-muted border border-vault-border
+                         hover:text-white hover:border-accent-blue/50
+                         transition-all duration-300"
+            >
+              Member Sign In
+            </Link>
           </motion.div>
         </header>
 
